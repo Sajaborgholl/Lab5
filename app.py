@@ -1,5 +1,7 @@
 #!/usr/bin/python
 import sqlite3
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 # Function to connect to the database
 def connect_to_db():
@@ -27,8 +29,6 @@ def create_db_table():
     finally:
         conn.close()
 
-
-
 # Function to insert a new user
 def insert_user(user):
     inserted_user = {}
@@ -48,11 +48,7 @@ def insert_user(user):
         conn.close()  # Ensure the connection is always closed
     return inserted_user
 
-# Call the create_db_table function
-if __name__ == "__main__":
-    create_db_table()
-
-
+# Function to get all users
 def get_users():
     users = []
     try:
@@ -81,6 +77,7 @@ def get_users():
 
     return users
 
+# Function to get a user by their ID
 def get_user_by_id(user_id):
     user = {}
     try:
@@ -110,7 +107,7 @@ def get_user_by_id(user_id):
 
     return user
 
-
+# Function to update a user
 def update_user(user):
     updated_user = {}
     try:
@@ -141,7 +138,7 @@ def update_user(user):
 
     return updated_user
 
-
+# Function to delete a user
 def delete_user(user_id):
     message = {}
     try:
@@ -166,3 +163,43 @@ def delete_user(user_id):
         conn.close()  # Ensure the connection is always closed
 
     return message
+
+
+# Flask app setup
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})  # Allow all origins
+
+# API Endpoints
+@app.route('/api/users', methods=['GET'])
+def api_get_users():
+    return jsonify(get_users()), 200
+
+@app.route('/api/users/<int:user_id>', methods=['GET'])
+def api_get_user(user_id):
+    user = get_user_by_id(user_id)
+    if user:
+        return jsonify(user), 200
+    else:
+        return jsonify({"error": "User not found"}), 404
+
+@app.route('/api/users/add', methods=['POST'])
+def api_add_user():
+    user = request.get_json()
+    required_fields = ["name", "email", "phone", "address", "country"]
+    if not all(field in user for field in required_fields):
+        return jsonify({"error": "Missing fields"}), 400
+    return jsonify(insert_user(user)), 201
+
+@app.route('/api/users/update', methods=['PUT'])
+def api_update_user():
+    user = request.get_json()
+    return jsonify(update_user(user)), 200
+
+@app.route('/api/users/delete/<int:user_id>', methods=['DELETE'])
+def api_delete_user(user_id):
+    return jsonify(delete_user(user_id)), 200
+
+# Ensure the database is created on app startup
+if __name__ == "__main__":
+    create_db_table()  # Create table if it doesn't exist
+    app.run(debug=True)  # Run the app in debug mode for development
